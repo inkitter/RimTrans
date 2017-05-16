@@ -56,7 +56,7 @@ namespace RimTrans
         {
             get
             {
-                return FilePath +"."+ NodeName;
+                return (FilePath +"."+ NodeName).ToLower();
             }
         }
     }
@@ -99,7 +99,13 @@ namespace RimTrans
         {
             return new NodeInfo() { FileName = Info.FileName, NodeName = Info.NodeName, NodeText = Info.NodeText, SubFolder = Info.SubFolder, TypeFolder = Info.TypeFolder };
         }
-
+        public string LabelName
+        {
+            get
+            {
+                return nodeinfo.NodeName;
+            }
+        }
         public string ContentEng
         {
             get
@@ -113,17 +119,12 @@ namespace RimTrans
         {
             get
             {
+                if (contentdest == "") { return ContentEng; }
                 return contentdest;
             }
         }
 
-        public string LabelName
-        {
-            get
-            {
-                return nodeinfo.NodeName;
-            }
-        }
+        
 
         public string TypeFolder
         {
@@ -156,7 +157,7 @@ namespace RimTrans
         }
         public string NodeKey()
         {
-            return nodeinfo.NodeKey;
+            return nodeinfo.NodeKey.ToLower();
         }
 
 
@@ -371,6 +372,7 @@ namespace RimTrans
             string OriPath = StaticVars.DIRBASE + modname + "\\Defs\\";
             string EngPath = StaticVars.DIRBASE + modname + "\\Languages\\English\\";
             string ChnPath = StaticVars.DIRBASE + modname + "\\Languages\\" + language + "\\";
+            List<NodeInfo> nodeori = new List<NodeInfo>();
             List<NodeInfo> nodeeng = new List<NodeInfo>();
             List<NodeInfo> nodechn = new List<NodeInfo>();
             XmlDocument xdoc = new XmlDocument() ;
@@ -383,20 +385,32 @@ namespace RimTrans
             Dictionary<string, NodeInfo> EngDict = new Dictionary<string, NodeInfo>();
 
             XNodeInfo.TypeFolder = "Keyed";
-            nodeeng.AddRange(ReadFileList(Directory.GetFiles(EngPath +"Keyed\\")));
-            nodechn.AddRange(ReadFileList(Directory.GetFiles(ChnPath+"Keyed\\")));
+            if (Directory.Exists(EngPath + "Keyed\\"))
+            {
+                nodeeng.AddRange(ReadFileList(Directory.GetFiles(EngPath + "Keyed\\")));
+            }
+            if (Directory.Exists(ChnPath + "Keyed\\"))
+            {
+                nodechn.AddRange(ReadFileList(Directory.GetFiles(ChnPath + "Keyed\\")));
+            }
             // 读取Keyed下的中文和英文文本
 
             XNodeInfo.TypeFolder = "DefInjected";
-            foreach (string dir in Directory.GetDirectories(EngPath+ "\\DefInjected\\"))
+            if (Directory.Exists(EngPath + "\\DefInjected\\"))
             {
-                XNodeInfo.SubFolder = Path.GetFileName(dir);
-                nodeeng.AddRange(ReadFileList(Directory.GetFiles(Path.GetFullPath(dir))));
+                foreach (string dir in Directory.GetDirectories(EngPath + "\\DefInjected\\"))
+                {
+                    XNodeInfo.SubFolder = Path.GetFileName(dir);
+                    nodeeng.AddRange(ReadFileList(Directory.GetFiles(Path.GetFullPath(dir))));
+                }
             }
-            foreach (string dir in Directory.GetDirectories(ChnPath+"\\DefInjected\\"))
+            if (Directory.Exists(ChnPath + "\\DefInjected\\"))
             {
-                XNodeInfo.SubFolder = Path.GetFileName(dir);
-                nodechn.AddRange(ReadFileList(Directory.GetFiles(Path.GetFullPath(dir))));
+                foreach (string dir in Directory.GetDirectories(ChnPath + "\\DefInjected\\"))
+                {
+                    XNodeInfo.SubFolder = Path.GetFileName(dir);
+                    nodechn.AddRange(ReadFileList(Directory.GetFiles(Path.GetFullPath(dir))));
+                }
             }
             // 读取DefInjected下的中文和英文文本
 
@@ -413,10 +427,14 @@ namespace RimTrans
             // 将英文文本生成词典
 
             ////////////////////
-            //
-            // 读取Def文件夹中有关英文文本的定义部分
 
-            //
+            // 读取Def文件夹中有关英文文本的定义部分
+            nodeori = ReadOriginal(OriPath);
+            foreach (NodeInfo ss in nodeori)
+            {
+                Xdata = new XMLdata(ss);
+                lstXMLdata.Add(Xdata);
+            }
             // 将定义的英文文本生成初始总表
 
             foreach (XMLdata data in lstXMLdata)
@@ -482,6 +500,70 @@ namespace RimTrans
                 }
                 return data;
             }
+
+            List<NodeInfo> ReadOriginal(string path)
+            {
+                List<NodeInfo> data = new List<NodeInfo>();
+                NodeInfo nodels = new NodeInfo();
+                string dename="";
+                if (!Directory.Exists(path)) { return data; }
+
+                foreach (string folders in Directory.GetDirectories(path))
+                {
+                    foreach (string file in Directory.GetFiles(folders))
+                    {
+                        nodels = new NodeInfo() { TypeFolder = "DefInjected" };
+
+                        nodels.FileName = Path.GetFileName(file);
+                        xdoc.Load(XmlReader.Create(file, settings));
+                        XmlNode n = xdoc.ChildNodes[1];
+                        XmlNodeList lst = n.ChildNodes;
+                        foreach (XmlNode xn in lst)
+                        {
+                            nodels.SubFolder = xn.Name;
+                            foreach (XmlNode xnn in xn.ChildNodes)
+                            {
+                                if (xnn.Name== "defName" ) { dename = xnn.InnerText; }
+                                switch (xnn.Name.ToLower())
+                                {
+                                    case "defname":
+                                        dename = xnn.InnerText;
+                                        break;
+                                    default:
+                                        break;
+                                }
+                                if (dename != "")
+                                {
+                                    switch (xnn.Name.ToLower())
+                                    {
+                                        case "label":
+                                        case "description":
+                                        case "deathmessage":
+                                        case "jobstring":
+                                            
+                                            nodels.NodeName = GetNodeName(dename, xnn.Name.ToLower());
+                                            nodels.NodeText = xnn.InnerText;
+                                            data.Add(Getnewnode(nodels));
+                                            break;
+                                        default:
+                                            break;
+                                    }
+                                }
+                            }
+                            dename = "";
+                        }
+                    }
+                }
+                return data;
+            }
+        }
+        private static NodeInfo Getnewnode(NodeInfo input)
+        {
+            return new NodeInfo() {FileName=input.FileName,NodeName=input.NodeName,NodeText=input.NodeText,SubFolder=input.SubFolder,TypeFolder=input.TypeFolder };
+        }
+        private static string GetNodeName(string defName,string typeName)
+        {
+            return defName+"."+typeName;
         }
         public static void SaveMod(string modname, List<XMLdata> indata, string language)
         {

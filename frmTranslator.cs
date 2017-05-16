@@ -112,14 +112,14 @@ namespace RimTrans
             DfData.DataSource = XMLText;
             // 将对象映射到datagrid里。
 
-            DfData.Columns[0].Width = 300;
+            DfData.Columns[0].Width = 100;
             DfData.Columns[0].DefaultCellStyle.BackColor = Color.WhiteSmoke;
             DfData.Columns[1].Width = 300;
-            DfData.Columns[2].Width = 100;
+            DfData.Columns[2].Width = 300;
             DfData.Columns[3].Width = 100;
             DfData.Columns[4].Width = 100;
-            DfData.Columns[5].Width = 100;
-            DfData.Columns[6].Width = 100;
+            DfData.Columns[5].Width = 150;
+            DfData.Columns[6].Width = 300;
 
             //DfData.Columns[0].HeaderText = "Variable Name";
             //DfData.Columns[1].HeaderText = "FROM";
